@@ -1,0 +1,30 @@
+name: Test ARC Karmada Multi-Cluster
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+
+jobs:
+  test-member1:
+    runs-on: arc-runner-member1
+    steps:
+      - name: Report from Member 1
+        run: |
+          echo "=========================================="
+          echo "Hello from GitHub Actions Runner on MEMBER1!"
+          echo "Cluster: kind-member1"
+          echo "Hostname: $(hostname)"
+          echo "Kernel: $(uname -r)"
+          echo "=========================================="
+
+  test-member2:
+    runs-on: arc-runner-member2
+    steps:
+      - name: Report from Member 2
+        run: |
+          echo "=========================================="
+          echo "Hello from GitHub Actions Runner on MEMBER2!"
+          echo "Cluster: kind-member2"
+          echo "Hostname: $(hostname)"
+          echo "Kernel: $(uname -r)"
+          echo "=========================================="
