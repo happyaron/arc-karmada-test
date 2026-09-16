@@ -1,0 +1,35 @@
+# ==============================================================================
+# 核心机制 ①：Karmada Pod 状态无损聚合器 (ResourceInterpreterCustomization)
+#
+# 【背景与问题】
+# Karmada 默认内置的 Pod 状态解释器 aggregatePodStatus 会丢弃容器名称
+# containerStatuses[].name 以及 status.conditions（例如 PodReady=True）。
+# 这会导致 ARC 控制器在检查 Pod 状态时，无法匹配到名为 "runner" 或 "listener" 的
+# 容器状态，且因缺失 Ready Condition 而误判 Pod 始终未就绪，最终在超时后将 Pod 误删除。
+#
+# 【解决方案】
+# 在 Karmada 控制面声明自定义 Lua 状态聚合器，将成员集群上报的 Pod 状态
+# （含完整容器信息与 Conditions）完整、无损地同步到控制面 Pod 对象。
+# ==============================================================================
+apiVersion: config.karmada.io/v1alpha1
+kind: ResourceInterpreterCustomization
+metadata:
+  name: pod-status-interpreter
+spec:
+  target:
+    apiVersion: v1
+    kind: Pod
+  customizations:
+    statusAggregation:
+      luaScript: |
+        function AggregateStatus(desiredObj, statusItems)
+          if statusItems ~= nil and #statusItems > 0 then
+            for i = 1, #statusItems do
+              if statusItems[i].status ~= nil then
+                desiredObj.status = statusItems[i].status
+                break
+              end
+            end
+          end
+          return desiredObj
+        end

@@ -1,0 +1,62 @@
+# ==============================================================================
+# 核心机制 ②：AutoscalingRunnerSet 声明与 Listener 跨集群通信凭据适配
+#
+# 【设计要点】
+# 1. hostAliases: 将 karmada-apiserver 域名解析至 Karmada API Server 的宿主机/网桥 IP，
+#    精准匹配控制面证书 SAN（Subject Alternative Names），解决 TLS x509 校验失败。
+# 2. volumeMounts: 挂载预先生成的控制面 ServiceAccount Token 与 CA 证书（karmada-token），
+#    覆盖容器默认读取的子集群凭据，解决 401 Unauthorized。
+# 3. KUBERNETES_SERVICE_HOST / PORT: 显式重定向 client-go 请求到 Karmada 控制面。
+# 4. NO_PROXY="*": 避免代理拦截跨集群内部通信。
+# ==============================================================================
+apiVersion: actions.github.com/v1alpha1
+kind: AutoscalingRunnerSet
+metadata:
+  name: karmada-runner
+  namespace: arc-runners
+  labels:
+    app.kubernetes.io/component: "autoscaling-runner-set"
+    app.kubernetes.io/part-of: gha-rs
+    actions.github.com/scale-set-name: karmada-runner
+    actions.github.com/scale-set-namespace: arc-runners
+spec:
+  githubConfigUrl: https://github.com/pkking/arc-karmada-test
+  githubConfigSecret: arc-github-secret
+  runnerScaleSetName: karmada-runner
+  minRunners: 0
+  maxRunners: 5
+  listenerTemplate:
+    spec:
+      hostAliases:
+      # 请根据实际环境将 IP 替换为 Karmada 控制面宿主机/容器网桥 IP
+      - ip: "172.22.0.4"
+        hostnames:
+        - "karmada-apiserver"
+      containers:
+      - name: listener
+        env:
+        - name: KUBERNETES_SERVICE_HOST
+          value: "karmada-apiserver"
+        - name: KUBERNETES_SERVICE_PORT
+          value: "32443"
+        - name: no_proxy
+          value: "*"
+        - name: NO_PROXY
+          value: "*"
+        volumeMounts:
+        - name: karmada-sa-token
+          mountPath: /var/run/secrets/kubernetes.io/serviceaccount
+          readOnly: true
+      volumes:
+      - name: karmada-sa-token
+        secret:
+          secretName: karmada-token
+  template:
+    spec:
+      restartPolicy: Never
+      serviceAccountName: karmada-runner-gha-rs-no-permission
+      containers:
+      - name: runner
+        command:
+        - /home/runner/run.sh
+        image: ghcr.io/actions/actions-runner:latest
