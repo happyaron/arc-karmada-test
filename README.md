@@ -49,7 +49,7 @@
                                   │ (Patch EphemeralRunnerSet)
                       ┌───────────▼───────────┐
                       │ Karmada Control Plane │
-                      │  - arc-manager (集中) │  (直接面向 Karmada 控制面调谐)
+                      │ - ARC Controller (集中)│  (直接面向 Karmada 控制面调谐)
                       │  - AutoscalingRunnerSet│
                       │  - EphemeralRunner    │
                       │  - Karmada Scheduler  │  (动态调度与依赖穿透)
@@ -129,7 +129,7 @@ arc-karmada-test/
 │   └── 04-autoscalingrunnerset.yaml     # 核心机制 ②：AutoscalingRunnerSet 及 Listener 凭据注入
 └── scripts/
     ├── setup-karmada-token.sh           # 一键提取控制面 CA 并生成 Listener 认证 Secret
-    └── run-arc-manager.sh               # 核心机制 ④：编译并启动修复版 ARC Controller Manager
+    └── run-arc-controller.sh            # 核心机制 ④：编译并启动修复版 ARC Controller (同 run-arc-manager.sh)
 ```
 
 ---
@@ -280,7 +280,7 @@ kubectl --kubeconfig="${KUBECONFIG_KARMADA}" apply -f manifests/04-autoscalingru
 
 ---
 
-### 步骤 9：运行修复版 ARC Controller Manager
+### 步骤 9：运行修复版 ARC Controller
 
 此步骤落实 **机制 ④**，运行解决了 Secret 循环调谐 Bug 的控制器：
 
@@ -289,8 +289,8 @@ kubectl --kubeconfig="${KUBECONFIG_KARMADA}" apply -f manifests/04-autoscalingru
 export KUBECONFIG_KARMADA="$HOME/karmada-data/karmada-apiserver.config"
 export GITHUB_TOKEN="ghp_yourPersonalAccessTokenHere"
 
-# 运行控制器
-bash scripts/run-arc-manager.sh
+# 运行 ARC Controller
+bash scripts/run-arc-controller.sh
 ```
 
 控制器启动成功后，会自动检测 Karmada 上的 `AutoscalingRunnerSet` 并拉起对应的 Listener Pod：
