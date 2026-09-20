@@ -1,0 +1,18 @@
+name: b9-06-cancel
+run-name: "b9-06 ${{ inputs.tag }} #${{ inputs.idx }}"
+on:
+  workflow_dispatch:
+    inputs:
+      idx:
+        description: "dispatch index"
+        required: true
+        type: string
+      tag:
+        description: "run tag, one per 9B-06 run"
+        required: true
+        type: string
+jobs:
+  hold:
+    runs-on: b9c-cancel-100
+    steps:
+      - run: sleep 600
